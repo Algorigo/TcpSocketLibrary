@@ -13,37 +13,11 @@ open class TcpSocketCommunication {
     private var subscribed = 0
 
     fun connectObservable(serverIp: String, serverPort: Int): Observable<TcpSocketConnection> {
-        Observable.create<TcpSocketConnection> {
-            if (connection != null) {
-                it.onNext(connection!!)
-            } else {
-                try {
-                    connection = TcpSocketConnection(serverIp, serverPort).also { connection ->
-                        it.onNext(connection)
-                        connection.disconnectListener = object : TcpSocketConnection.OnDisconnectListener {
-                            override fun onDisconnected() {
-                                if (subscribed != 0) {
-                                    it.onError(TcpSocketConnection.DisconnectedException())
-                                }
-                            }
-                        }
-                    }
-                } catch (e: Exception) {
-                    connectSubject.onError(e)
-                }
-            }
-        }
-            .subscribeOn(Schedulers.io())
-            .subscribe({
-                connectSubject.onNext(it)
-            }, {
-                Log.e(LOG_TAG, "", it)
-                connectSubject.onError(it)
-            })
-
         return connectSubject
             .doOnSubscribe {
-                subscribed++
+                if (subscribed++ == 0) {
+                    connectInner(serverIp, serverPort)
+                }
             }
             .doOnError {
                 connectSubject = BehaviorSubject.create<TcpSocketConnection>()
@@ -54,6 +28,35 @@ open class TcpSocketCommunication {
                     connection = null
                 }
             }
+    }
+
+    private fun connectInner(serverIp: String, serverPort: Int) {
+        if (connection == null) {
+            Observable.create<TcpSocketConnection> {
+                try {
+                    connection = TcpSocketConnection(serverIp, serverPort).also { connection ->
+                        it.onNext(connection)
+                        connection.disconnectListener =
+                            object : TcpSocketConnection.OnDisconnectListener {
+                                override fun onDisconnected() {
+                                    if (subscribed != 0) {
+                                        it.onError(TcpSocketConnection.DisconnectedException())
+                                    }
+                                }
+                            }
+                    }
+                } catch (e: Exception) {
+                    connectSubject.onError(e)
+                }
+            }
+                .subscribeOn(Schedulers.io())
+                .subscribe({
+                    connectSubject.onNext(it)
+                }, {
+                    Log.e(LOG_TAG, "", it)
+                    connectSubject.onError(it)
+                })
+        }
     }
 
     fun sendDataSingle(byteArray: ByteArray, receiveDataVarifier: (byteArray: ByteArray) -> Boolean): Single<ByteArray>? {

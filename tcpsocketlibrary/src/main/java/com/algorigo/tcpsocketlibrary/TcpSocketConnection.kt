@@ -119,17 +119,17 @@ class TcpSocketConnection(serverIp: String, serverPort: Int, timeout: Int = TIME
                     if (System.currentTimeMillis() - sendData.sentTimeStamp > TIMEOUT_MILLIS) {
                         byteBuffer.clear()
                         bufferSize = 0
+                        sendDataQueue.pop()
                         sendData.cancel(TimeoutException(""))
-                        sendDataQueue.pop()
-                    }
-
-                    val byteArray = byteBuffer.array().copyOf(bufferSize)
-                    if (sendData.receiveDataVarifier(byteArray)) {
-                        byteBuffer.clear()
-                        bufferSize = 0
-                        sendDataQueue.pop()
-                        sendData.emit(byteArray)?.let {
-                            sendDataQueue.push(it)
+                    } else {
+                        val byteArray = byteBuffer.array().copyOf(bufferSize)
+                        if (sendData.receiveDataVarifier(byteArray)) {
+                            byteBuffer.clear()
+                            bufferSize = 0
+                            sendDataQueue.pop()
+                            sendData.emit(byteArray)?.let {
+                                sendDataQueue.push(it)
+                            }
                         }
                     }
                 } else {
@@ -212,7 +212,7 @@ class TcpSocketConnection(serverIp: String, serverPort: Int, timeout: Int = TIME
     }
 
     companion object {
-        private const val TIMEOUT_MILLIS = 3000
+        private const val TIMEOUT_MILLIS = 30000
         private val LOG_TAG = TcpSocketConnection::class.java.simpleName
     }
 }
