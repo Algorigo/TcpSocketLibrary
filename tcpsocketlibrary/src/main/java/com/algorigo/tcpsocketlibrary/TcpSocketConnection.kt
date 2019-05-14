@@ -212,7 +212,7 @@ class TcpSocketConnection(serverIp: String, serverPort: Int, timeout: Int = TIME
     }
 
     companion object {
-        private const val TIMEOUT_MILLIS = 3000
+        private const val TIMEOUT_MILLIS = 30000
         private val LOG_TAG = TcpSocketConnection::class.java.simpleName
     }
 }
