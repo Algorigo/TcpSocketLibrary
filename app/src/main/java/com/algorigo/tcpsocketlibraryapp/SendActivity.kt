@@ -30,7 +30,7 @@ class SendActivity : AppCompatActivity() {
                     deviceDisposable = null
                 }
                 .subscribe({
-                    Log.e("!!!", "onComplete")
+                    Log.e(LOG_TAG, "onComplete")
                 }, {
                     Log.e(LOG_TAG, "", it)
                 })

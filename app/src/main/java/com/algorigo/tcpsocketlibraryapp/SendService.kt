@@ -50,18 +50,14 @@ class SendService : Service() {
                 Log.e(LOG_TAG, "", e)
             }
 
-            Log.e("!!!", "0000")
             serverSocket?.let {
                 while (!disposed) {
-                    Log.e("!!!", "1111")
                     socket = it.accept()
-                    Log.e("!!!", "2222")
 
                     try {
                         val outputStream = socket.getOutputStream()
                         val inputStream = socket.getInputStream()
 
-                        Log.e("!!!", "3333")
                         while (socket.isConnected) {
                             inputStream?.let {
                                 val length = it.available()
@@ -69,7 +65,6 @@ class SendService : Service() {
                                     val bytes = ByteArray(length)
                                     it.read(bytes)
 
-                                    Log.e("!!!", "read:${bytes.contentToString()}")
                                     if (bytes.size > 0) {
                                         outputStream?.write(
                                             byteArrayOf(
@@ -87,7 +82,6 @@ class SendService : Service() {
                         emitter.onError(e)
                         return@create
                     }
-                    Log.e("!!!", "4444")
                 }
             }
             emitter.onComplete()
