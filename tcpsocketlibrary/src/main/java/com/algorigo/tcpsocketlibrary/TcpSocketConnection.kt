@@ -121,15 +121,15 @@ class TcpSocketConnection(serverIp: String, serverPort: Int, timeout: Int = TIME
                         bufferSize = 0
                         sendData.cancel(TimeoutException(""))
                         sendDataQueue.pop()
-                    }
-
-                    val byteArray = byteBuffer.array().copyOf(bufferSize)
-                    if (sendData.receiveDataVarifier(byteArray)) {
-                        byteBuffer.clear()
-                        bufferSize = 0
-                        sendDataQueue.pop()
-                        sendData.emit(byteArray)?.let {
-                            sendDataQueue.push(it)
+                    } else {
+                        val byteArray = byteBuffer.array().copyOf(bufferSize)
+                        if (sendData.receiveDataVarifier(byteArray)) {
+                            byteBuffer.clear()
+                            bufferSize = 0
+                            sendDataQueue.pop()
+                            sendData.emit(byteArray)?.let {
+                                sendDataQueue.push(it)
+                            }
                         }
                     }
                 } else {
