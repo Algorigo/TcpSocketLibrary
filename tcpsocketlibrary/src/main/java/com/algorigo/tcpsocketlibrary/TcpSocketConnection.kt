@@ -119,8 +119,8 @@ class TcpSocketConnection(serverIp: String, serverPort: Int, timeout: Int = TIME
                     if (System.currentTimeMillis() - sendData.sentTimeStamp > TIMEOUT_MILLIS) {
                         byteBuffer.clear()
                         bufferSize = 0
-                        sendData.cancel(TimeoutException(""))
                         sendDataQueue.pop()
+                        sendData.cancel(TimeoutException(""))
                     } else {
                         val byteArray = byteBuffer.array().copyOf(bufferSize)
                         if (sendData.receiveDataVarifier(byteArray)) {
