@@ -195,6 +195,9 @@ class TcpSocketConnection(serverIp: String, serverPort: Int, timeout: Int = TIME
             id = generateId()
             sendDataQueue.push(SingleSendData(id, byteArray, receiveDataVarifier, it))
         }
+            .doFinally {
+                cancelData(id)
+            }
             .subscribeOn(Schedulers.io())
     }
 
@@ -204,6 +207,9 @@ class TcpSocketConnection(serverIp: String, serverPort: Int, timeout: Int = TIME
             id = generateId()
             sendDataQueue.push(ObservableSendData(id, byteArray, receiveDataVarifier, it))
         }
+            .doFinally {
+                cancelData(id)
+            }
             .subscribeOn(Schedulers.io())
     }
 
