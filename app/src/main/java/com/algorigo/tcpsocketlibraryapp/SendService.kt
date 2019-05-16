@@ -25,6 +25,7 @@ class SendService : Service() {
 
     private var disposable: Disposable? = null
     private var serverSocket: ServerSocket? = null
+
     override fun onCreate() {
         super.onCreate()
         startSocket()
@@ -54,9 +55,11 @@ class SendService : Service() {
                 while (!disposed) {
                     socket = it.accept()
 
+                    var outputStream: OutputStream? = null
+                    var inputStream: InputStream? = null
                     try {
-                        val outputStream = socket.getOutputStream()
-                        val inputStream = socket.getInputStream()
+                        outputStream = socket.getOutputStream()
+                        inputStream = socket.getInputStream()
 
                         while (socket.isConnected) {
                             inputStream?.let {
@@ -81,6 +84,9 @@ class SendService : Service() {
                         Log.e(LOG_TAG, "server error", e)
                         emitter.onError(e)
                         return@create
+                    } finally {
+                        inputStream?.close()
+                        outputStream?.close()
                     }
                 }
             }

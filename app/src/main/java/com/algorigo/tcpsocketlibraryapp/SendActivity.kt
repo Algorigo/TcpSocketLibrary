@@ -21,21 +21,6 @@ class SendActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_send)
 
-        if (deviceDisposable == null) {
-            deviceDisposable = Rx2ServiceBindingFactory.bind<SendService.ServiceBinder>(
-                this,
-                Intent(this, SendService::class.java)
-            )
-                .doFinally {
-                    deviceDisposable = null
-                }
-                .subscribe({
-                    Log.e(LOG_TAG, "onComplete")
-                }, {
-                    Log.e(LOG_TAG, "", it)
-                })
-        }
-
         connectBtn.setOnClickListener {
             if (disposable == null) {
                 disposable = TcpSocketCommunication().connectObservable("localhost", SendService.SERVERPORT)
@@ -77,10 +62,33 @@ class SendActivity : AppCompatActivity() {
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
+    override fun onStart() {
+        super.onStart()
+        if (deviceDisposable == null) {
+            deviceDisposable = Rx2ServiceBindingFactory.bind<SendService.ServiceBinder>(
+                this,
+                Intent(this, SendService::class.java)
+            )
+                .doFinally {
+                    deviceDisposable = null
+                }
+                .subscribe({
+                }, {
+                    Log.e(SendActivity.LOG_TAG, "", it)
+                })
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
         deviceDisposable?.dispose()
         deviceDisposable = null
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        disposable?.dispose()
+        disposable = null
     }
 
     companion object {
