@@ -23,7 +23,8 @@ class SendActivity : AppCompatActivity() {
 
         connectBtn.setOnClickListener {
             if (disposable == null) {
-                disposable = TcpSocketCommunication().connectObservable("localhost", SendService.SERVERPORT)
+                disposable = TcpSocketCommunication("localhost", SendService.SERVERPORT)
+                    .connectObservable()
                     .doOnSubscribe {
                         connectBtn.isEnabled = false
                         disconnectBtn.isEnabled = true
