@@ -49,11 +49,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun connectWithTcp(ip: String, port: Int) {
         if (ms48Communication == null) {
-            ms48Communication = MatrixSensor48Communication()
+            ms48Communication = MatrixSensor48Communication(ip, port)
         }
         if (tcpDisposable == null) {
             tcpDisposable = ms48Communication
-                    ?.connectObservable(ip, port)
+                    ?.connectObservable()
                     ?.observeOn(AndroidSchedulers.mainThread())
                     ?.doFinally {
                         onDisconnected()

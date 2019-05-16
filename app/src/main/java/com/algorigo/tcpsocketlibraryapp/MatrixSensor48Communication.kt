@@ -4,7 +4,7 @@ import com.algorigo.tcpsocketlibrary.TcpSocketCommunication
 import io.reactivex.Observable
 import java.nio.ByteBuffer
 
-class MatrixSensor48Communication : TcpSocketCommunication() {
+class MatrixSensor48Communication(ip: String, port: Int) : TcpSocketCommunication(ip, port) {
 
     private val getBytes: ByteArray
 

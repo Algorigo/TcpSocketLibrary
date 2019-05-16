@@ -6,17 +6,17 @@ import io.reactivex.Single
 import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.BehaviorSubject
 
-open class TcpSocketCommunication {
+open class TcpSocketCommunication(private val serverIp: String, private val serverPort: Int, private val receiveDataVarifier: ((byteArray: ByteArray) -> ByteArray?)? = null) {
 
     private var connection: TcpSocketConnection? = null
     private var connectSubject = BehaviorSubject.create<TcpSocketConnection>()
     private var subscribed = 0
 
-    fun connectObservable(serverIp: String, serverPort: Int): Observable<TcpSocketConnection> {
+    fun connectObservable(): Observable<TcpSocketConnection> {
         return connectSubject
             .doOnSubscribe {
                 if (subscribed++ == 0) {
-                    connectInner(serverIp, serverPort)
+                    connectInner()
                 }
             }
             .doOnError {
@@ -30,17 +30,21 @@ open class TcpSocketCommunication {
             }
     }
 
-    private fun connectInner(serverIp: String, serverPort: Int) {
+    private fun connectInner() {
         if (connection == null) {
-            Observable.create<TcpSocketConnection> {
+            Observable.create<TcpSocketConnection> { emitter ->
                 try {
-                    connection = TcpSocketConnection(serverIp, serverPort).also { connection ->
-                        it.onNext(connection)
-                        connection.disconnectListener =
+                    connection = if (receiveDataVarifier == null) {
+                        TcpSocketConnection(serverIp, serverPort)
+                    } else {
+                        TcpSocketConnection(serverIp, serverPort, receiveDataVarifier)
+                    }.also {
+                        emitter.onNext(it)
+                        it.disconnectListener =
                             object : TcpSocketConnection.OnDisconnectListener {
                                 override fun onDisconnected() {
                                     if (subscribed != 0) {
-                                        it.onError(TcpSocketConnection.DisconnectedException())
+                                        emitter.onError(TcpSocketConnection.DisconnectedException())
                                     }
                                 }
                             }

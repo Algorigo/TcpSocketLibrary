@@ -6,18 +6,21 @@ import android.os.Binder
 import android.os.IBinder
 import android.util.Log
 import io.reactivex.Completable
+import io.reactivex.Observable
 import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
-import java.io.*
+import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
 import java.net.ServerSocket
 import java.net.Socket
+import java.util.concurrent.TimeUnit
 
-
-class SendService : Service() {
+class ReceiveService : Service() {
 
     inner class ServiceBinder : Binder() {
-        fun getService(): SendService {
-            return this@SendService
+        fun getService(): ReceiveService {
+            return this@ReceiveService
         }
     }
 
@@ -35,12 +38,6 @@ class SendService : Service() {
         return binder
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        disposable?.dispose()
-        disposable = null
-    }
-
     fun startSocket() {
         var disposed = false
         disposable = Completable.create { emitter ->
@@ -55,38 +52,52 @@ class SendService : Service() {
                 while (!disposed) {
                     socket = it.accept()
 
+                    var outputDisposable: Disposable? = null
                     var outputStream: OutputStream? = null
                     var inputStream: InputStream? = null
                     try {
                         outputStream = socket.getOutputStream()
                         inputStream = socket.getInputStream()
 
-                        while (socket.isConnected) {
+                        outputDisposable = Observable.interval(5, TimeUnit.SECONDS)
+                            .map {
+                                outputStream?.write(
+                                    byteArrayOf(
+                                        if (it%2 == 0L) {
+                                            0xff.toByte()
+                                        } else {
+                                            0x00.toByte()
+                                        }
+                                    )
+                                )
+                                true
+                            }
+                            .doFinally {
+                                outputDisposable = null
+                            }
+                            .subscribe({
+                            }, {
+                                Log.e(LOG_TAG, "", it)
+                            })
+
+                        while (socket.isConnected && outputDisposable != null) {
                             inputStream?.let {
                                 val length = it.available()
                                 if (length > 0) {
                                     val bytes = ByteArray(length)
                                     it.read(bytes)
-
-                                    if (bytes.size > 0) {
-                                        outputStream?.write(
-                                            byteArrayOf(
-                                                bytes[0],
-                                                0xff.toByte()
-                                            )
-                                        )
-                                    }
                                 }
                             }
                             Thread.sleep(100)
                         }
                     } catch (e: IOException) {
-                        Log.e(LOG_TAG, "server error", e)
+                        Log.e(LOG_TAG, "ReceiveService server error", e)
                         emitter.onError(e)
                         return@create
                     } finally {
                         inputStream?.close()
                         outputStream?.close()
+                        outputDisposable?.dispose()
                     }
                 }
             }
@@ -106,6 +117,6 @@ class SendService : Service() {
     companion object {
         private val LOG_TAG = SendService::class.java.simpleName
 
-        const val SERVERPORT = 9999
+        const val SERVERPORT = 9998
     }
 }

@@ -8,7 +8,7 @@ publish {
     userOrg = 'chagilhwan'
     groupId = 'com.algorigo.tcpsocketlibrary'
     artifactId = 'TcpSocketLibrary'
-    publishVersion = '1.0.2'
+    publishVersion = '1.0.3'
     desc = 'AlgorigoBleLibrary'
     website = 'https://github.com/Algorigo/TcpSocketLibrary'
     issueTracker = "${website}/issues"
