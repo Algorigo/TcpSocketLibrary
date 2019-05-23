@@ -143,13 +143,20 @@ class TcpSocketConnection(serverIp: String, serverPort: Int, timeout: Int = TIME
                         sendData.cancel(TimeoutException(""))
                     } else {
                         val byteArray = byteBuffer.array().copyOf(bufferSize)
-                        if (sendData.receiveDataVarifier(byteArray)) {
+                        try {
+                            if (sendData.receiveDataVarifier(byteArray)) {
+                                byteBuffer.clear()
+                                bufferSize = 0
+                                sendDataQueue.pop()
+                                sendData.emit(byteArray)?.let {
+                                    sendDataQueue.push(it)
+                                }
+                            }
+                        } catch (e: Exception) {
                             byteBuffer.clear()
                             bufferSize = 0
                             sendDataQueue.pop()
-                            sendData.emit(byteArray)?.let {
-                                sendDataQueue.push(it)
-                            }
+                            sendData.cancel(e)
                         }
                     }
                 } else {
@@ -195,6 +202,10 @@ class TcpSocketConnection(serverIp: String, serverPort: Int, timeout: Int = TIME
                 sendDataSingleInner(it, {
                     true
                 })
+                    .subscribe({
+                    }, {
+                        Log.e(LOG_TAG, "", it)
+                    })
             }
 
             if (sendDataQueue.size > 0) {
@@ -202,6 +213,7 @@ class TcpSocketConnection(serverIp: String, serverPort: Int, timeout: Int = TIME
 
                 try {
                     sendData(sendData)
+                    sendDataQueue.remove(sendData)
                 } catch (e: Exception) {
                     Log.e(LOG_TAG, "", e)
                     break
