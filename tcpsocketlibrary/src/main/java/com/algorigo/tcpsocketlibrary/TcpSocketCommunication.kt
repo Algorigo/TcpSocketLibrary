@@ -6,7 +6,7 @@ import io.reactivex.Single
 import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.BehaviorSubject
 
-open class TcpSocketCommunication(private val serverIp: String, private val serverPort: Int, private val receiveDataVarifier: ((byteArray: ByteArray) -> ByteArray?)? = null) {
+open class TcpSocketCommunication(private val serverIp: String, private val serverPort: Int) {
 
     private var connection: TcpSocketConnection? = null
     private var connectSubject = BehaviorSubject.create<TcpSocketConnection>()
@@ -16,7 +16,30 @@ open class TcpSocketCommunication(private val serverIp: String, private val serv
         return connectSubject
             .doOnSubscribe {
                 if (subscribed++ == 0) {
-                    connectInner()
+                    Observable.create<TcpSocketConnection> { emitter ->
+                        try {
+                            connection = TcpSocketConnection(serverIp, serverPort).also {
+                                emitter.onNext(it)
+                                it.disconnectListener =
+                                    object : TcpSocketConnection.OnDisconnectListener {
+                                        override fun onDisconnected() {
+                                            if (subscribed != 0) {
+                                                emitter.onError(TcpSocketConnection.DisconnectedException())
+                                            }
+                                        }
+                                    }
+                            }
+                        } catch (e: Exception) {
+                            connectSubject.onError(e)
+                        }
+                    }
+                        .subscribeOn(Schedulers.io())
+                        .subscribe({
+                            connectSubject.onNext(it)
+                        }, {
+                            Log.e(LOG_TAG, "", it)
+                            connectSubject.onError(it)
+                        })
                 }
             }
             .doOnError {
@@ -30,45 +53,16 @@ open class TcpSocketCommunication(private val serverIp: String, private val serv
             }
     }
 
-    private fun connectInner() {
-        if (connection == null) {
-            Observable.create<TcpSocketConnection> { emitter ->
-                try {
-                    connection = if (receiveDataVarifier == null) {
-                        TcpSocketConnection(serverIp, serverPort)
-                    } else {
-                        TcpSocketConnection(serverIp, serverPort, receiveDataVarifier)
-                    }.also {
-                        emitter.onNext(it)
-                        it.disconnectListener =
-                            object : TcpSocketConnection.OnDisconnectListener {
-                                override fun onDisconnected() {
-                                    if (subscribed != 0) {
-                                        emitter.onError(TcpSocketConnection.DisconnectedException())
-                                    }
-                                }
-                            }
-                    }
-                } catch (e: Exception) {
-                    connectSubject.onError(e)
-                }
-            }
-                .subscribeOn(Schedulers.io())
-                .subscribe({
-                    connectSubject.onNext(it)
-                }, {
-                    Log.e(LOG_TAG, "", it)
-                    connectSubject.onError(it)
-                })
-        }
+    fun sendDataSingle(byteArray: ByteArray, receiveDataVarifier: (byteArray: ByteArray) -> Boolean): Single<ByteArray> {
+        return connection!!.sendDataSingle(byteArray, receiveDataVarifier)
     }
 
-    fun sendDataSingle(byteArray: ByteArray, receiveDataVarifier: (byteArray: ByteArray) -> Boolean): Single<ByteArray>? {
-        return connection?.sendDataSingle(byteArray, receiveDataVarifier)
+    fun sendDataObservable(byteArray: ByteArray, receiveDataVarifier: (byteArray: ByteArray) -> Boolean): Observable<ByteArray> {
+        return connection!!.sendDataObservable(byteArray, receiveDataVarifier)
     }
 
-    fun sendDataObservable(byteArray: ByteArray, receiveDataVarifier: (byteArray: ByteArray) -> Boolean): Observable<ByteArray>? {
-        return connection?.sendDataObservable(byteArray, receiveDataVarifier)
+    fun receiveDataObservable(function: (tcpSocketConnection: TcpSocketConnection, byteArray: ByteArray) -> Single<Boolean>?): Observable<ByteArray> {
+        return connection!!.receiveDataObservable(function)
     }
 
     fun isConnected(): Boolean {
