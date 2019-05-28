@@ -2,14 +2,13 @@ package com.algorigo.tcpsocketlibrary
 
 import android.util.Log
 import com.jakewharton.rxrelay2.PublishRelay
-import io.reactivex.Single
 import io.reactivex.Observable
 import io.reactivex.ObservableEmitter
+import io.reactivex.Single
 import io.reactivex.SingleEmitter
 import io.reactivex.schedulers.Schedulers
 import java.io.InputStream
 import java.io.OutputStream
-import java.lang.IllegalStateException
 import java.net.InetAddress
 import java.net.Socket
 import java.nio.ByteBuffer
@@ -77,15 +76,11 @@ class TcpSocketConnection(serverIp: String, serverPort: Int, timeout: Int = TIME
     private val sendDataQueue = ArrayDeque<SendData>()
     internal var disconnectListener: OnDisconnectListener? = null
 
-    private var receiveDataVarifier: ((byteArray: ByteArray) -> ByteArray?)? = null
+    private var function: ((tcpSocketConnection: TcpSocketConnection, byteArray: ByteArray) -> Single<Boolean>?)? = null
     private val receiveDataRelay = PublishRelay.create<ByteArray>()
 
     init {
         connect(serverIp, serverPort, timeout)
-    }
-
-    constructor(serverIp: String, serverPort: Int, receiveDataVarifier: (byteArray: ByteArray) -> ByteArray?, timeout: Int = TIMEOUT_MILLIS) : this(serverIp, serverPort, timeout) {
-        this.receiveDataVarifier = receiveDataVarifier
     }
 
     private fun connect(serverIp: String, serverPort: Int, timeout: Int) {
@@ -106,16 +101,13 @@ class TcpSocketConnection(serverIp: String, serverPort: Int, timeout: Int = TIME
     }
 
     private fun messageHandle() {
-        if (receiveDataVarifier == null) {
-            handleMessageSending()
-        } else {
-            handleMessageReceiving()
-        }
+        messageHandleInner()
+
         Log.i(LOG_TAG, "disposed")
         disconnectListener?.onDisconnected()
     }
 
-    private fun handleMessageSending() {
+    private fun messageHandleInner() {
         while (socket.isConnected) {
             try {
                 inputStream?.let {
@@ -132,6 +124,7 @@ class TcpSocketConnection(serverIp: String, serverPort: Int, timeout: Int = TIME
                 break
             }
 
+            val byteArray = byteBuffer.array().copyOf(bufferSize)
             if (sendDataQueue.size > 0) {
                 val sendData = sendDataQueue.peek()
 
@@ -142,7 +135,6 @@ class TcpSocketConnection(serverIp: String, serverPort: Int, timeout: Int = TIME
                         sendDataQueue.pop()
                         sendData.cancel(TimeoutException(""))
                     } else {
-                        val byteArray = byteBuffer.array().copyOf(bufferSize)
                         try {
                             if (sendData.receiveDataVarifier(byteArray)) {
                                 byteBuffer.clear()
@@ -162,61 +154,26 @@ class TcpSocketConnection(serverIp: String, serverPort: Int, timeout: Int = TIME
                 } else {
                     try {
                         sendData(sendData)
+                        if (sendData.receiveDataVarifier(byteArrayOf())) {
+                            sendDataQueue.remove(sendData)
+                        }
                     } catch (e: Exception) {
                         Log.e(LOG_TAG, "", e)
                         break
                     }
                 }
-            }
-
-            try {
-                Thread.sleep(500)
-            } catch (e: InterruptedException) {
-                Log.e(LOG_TAG, "interruptedExcpetion")
-            }
-        }
-    }
-
-    private fun handleMessageReceiving() {
-        while (socket.isConnected) {
-            try {
-                inputStream?.let {
-                    val length = it.available()
-                    if (length > 0) {
-                        val bytes = ByteArray(length)
-                        it.read(bytes)
-                        byteBuffer.put(bytes)
-                        bufferSize += length
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(LOG_TAG, "", e)
-                break
-            }
-
-            val byteArray = byteBuffer.array().copyOf(bufferSize)
-            receiveDataVarifier!!(byteArray)?.let {
-                byteBuffer.clear()
-                bufferSize = 0
-                receiveDataRelay.accept(byteArray)
-                sendDataSingleInner(it, {
-                    true
-                })
-                    .subscribe({
-                    }, {
-                        Log.e(LOG_TAG, "", it)
-                    })
-            }
-
-            if (sendDataQueue.size > 0) {
-                val sendData = sendDataQueue.peek()
-
-                try {
-                    sendData(sendData)
-                    sendDataQueue.remove(sendData)
-                } catch (e: Exception) {
-                    Log.e(LOG_TAG, "", e)
-                    break
+            } else {
+                function?.let {
+                    it(this, byteArray)
+                        ?.doOnSubscribe {
+                            byteBuffer.clear()
+                            bufferSize = 0
+                            receiveDataRelay.accept(byteArray)
+                        }
+                        ?.subscribe({
+                        }, {
+                            Log.e(LOG_TAG, "222 onError", it)
+                        })
                 }
             }
 
@@ -266,14 +223,6 @@ class TcpSocketConnection(serverIp: String, serverPort: Int, timeout: Int = TIME
     }
 
     fun sendDataSingle(byteArray: ByteArray, receiveDataVarifier: (byteArray: ByteArray) -> Boolean): Single<ByteArray> {
-        if (this.receiveDataVarifier == null) {
-            return sendDataSingleInner(byteArray, receiveDataVarifier)
-        } else {
-            return Single.error(IllegalModeException())
-        }
-    }
-
-    private fun sendDataSingleInner(byteArray: ByteArray, receiveDataVarifier: (byteArray: ByteArray) -> Boolean): Single<ByteArray> {
         var id = 0L
         return Single.create<ByteArray> {
             id = generateId()
@@ -286,14 +235,6 @@ class TcpSocketConnection(serverIp: String, serverPort: Int, timeout: Int = TIME
     }
 
     fun sendDataObservable(byteArray: ByteArray, receiveDataVarifier: (byteArray: ByteArray) -> Boolean): Observable<ByteArray> {
-        if (this.receiveDataVarifier == null) {
-            return sendDataObservableInner(byteArray, receiveDataVarifier)
-        } else {
-            return Observable.error(IllegalModeException())
-        }
-    }
-
-    private fun sendDataObservableInner(byteArray: ByteArray, receiveDataVarifier: (byteArray: ByteArray) -> Boolean): Observable<ByteArray> {
         var id = 0L
         return Observable.create<ByteArray> {
             id = generateId()
@@ -305,11 +246,12 @@ class TcpSocketConnection(serverIp: String, serverPort: Int, timeout: Int = TIME
             .subscribeOn(Schedulers.io())
     }
 
-    fun receiveDataObservable(): Observable<ByteArray> {
-        if (this.receiveDataVarifier != null) {
+    fun receiveDataObservable(function: (tcpSocketConnection: TcpSocketConnection, byteArray: ByteArray) -> Single<Boolean>?): Observable<ByteArray> {
+        if (this.function == null) {
+            this.function = function
             return receiveDataRelay
         } else {
-            return Observable.error(IllegalModeException())
+            return Observable.error(IllegalStateException())
         }
     }
 

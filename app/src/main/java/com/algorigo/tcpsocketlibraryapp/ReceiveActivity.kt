@@ -23,23 +23,7 @@ class ReceiveActivity : AppCompatActivity() {
 
         connectBtn.setOnClickListener {
             if (disposable == null) {
-                disposable = TcpSocketCommunication("localhost", ReceiveService.SERVERPORT, {
-                    if (it.size > 0) {
-                        when (it[0]) {
-                            0x00.toByte() -> {
-                                byteArrayOf(0xff.toByte())
-                            }
-                            0xff.toByte() -> {
-                                byteArrayOf(0x00.toByte())
-                            }
-                            else -> {
-                                null
-                            }
-                        }
-                    } else {
-                        null
-                    }
-                })
+                disposable = TcpSocketCommunication("localhost", ReceiveService.SERVERPORT)
                     .connectObservable()
                     .doOnSubscribe {
                         connectBtn.isEnabled = false
@@ -53,7 +37,33 @@ class ReceiveActivity : AppCompatActivity() {
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe({
                         tcpSocketConnection = it.apply {
-                            receiveDataObservable()
+                            receiveDataObservable({ connection, byteArray ->
+                                if (byteArray.size > 0) {
+                                    when (byteArray[0]) {
+                                        0x00.toByte() -> {
+                                            connection.sendDataSingle(byteArrayOf(0xff.toByte()), {
+                                                true
+                                            })
+                                                .map {
+                                                    true
+                                                }
+                                        }
+                                        0xff.toByte() -> {
+                                            connection.sendDataSingle(byteArrayOf(0x00.toByte()), {
+                                                true
+                                            })
+                                                .map {
+                                                    true
+                                                }
+                                        }
+                                        else -> {
+                                            null
+                                        }
+                                    }
+                                } else {
+                                    null
+                                }
+                            })
                                 .observeOn(AndroidSchedulers.mainThread())
                                 .subscribe({
                                     receiveText.text = it.contentToString()
