@@ -19,7 +19,6 @@ open class TcpSocketCommunication(private val serverIp: String, private val serv
                     Observable.create<TcpSocketConnection> { emitter ->
                         try {
                             connection = TcpSocketConnection(serverIp, serverPort).also {
-                                emitter.onNext(it)
                                 it.disconnectListener =
                                     object : TcpSocketConnection.OnDisconnectListener {
                                         override fun onDisconnected() {
@@ -29,6 +28,7 @@ open class TcpSocketCommunication(private val serverIp: String, private val serv
                                         }
                                     }
                             }
+                            emitter.onNext(connection!!)
                         } catch (e: Exception) {
                             connectSubject.onError(e)
                         }
