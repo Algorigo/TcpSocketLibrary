@@ -108,7 +108,7 @@ class TcpSocketConnection(serverIp: String, serverPort: Int, timeout: Int = TIME
     }
 
     private fun messageHandleInner() {
-        while (socket.isConnected) {
+        while (inputStream != null && outputStream != null) {
             try {
                 inputStream?.let {
                     val length = it.available()
