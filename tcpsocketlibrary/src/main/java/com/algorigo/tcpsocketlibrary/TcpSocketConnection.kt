@@ -141,17 +141,19 @@ class TcpSocketConnection(serverIp: String, serverPort: Int, private val timeout
 
                 if (sendData.isSent()) {
                     if (System.currentTimeMillis() - sendData.sentTimeStamp > timeout) {
+                        // Timeout
                         log("timeout started:${sendData.sentTimeStamp}")
                         byteBuffer.clear()
                         bufferSize = 0
-                        sendDataQueue.pop()
+                        sendDataQueue.remove(sendData)
                         sendData.cancel(TimeoutException(""))
                     } else {
                         try {
                             if (sendData.receiveDataVarifier(byteArray)) {
+                                // SendData의 Receive Data validate 성공
                                 byteBuffer.clear()
                                 bufferSize = 0
-                                sendDataQueue.pop()
+                                sendDataQueue.remove(sendData)
                                 sendData.emit(byteArray)?.let {
                                     sendDataQueue.push(it)
                                 }
@@ -159,7 +161,7 @@ class TcpSocketConnection(serverIp: String, serverPort: Int, private val timeout
                         } catch (e: Exception) {
                             byteBuffer.clear()
                             bufferSize = 0
-                            sendDataQueue.pop()
+                            sendDataQueue.remove(sendData)
                             sendData.cancel(e)
                         }
                     }
