@@ -15,7 +15,7 @@ import java.nio.ByteBuffer
 import java.util.*
 import java.util.concurrent.TimeoutException
 
-class TcpSocketConnection(serverIp: String, serverPort: Int, timeout: Int = TIMEOUT_MILLIS) {
+class TcpSocketConnection(serverIp: String, serverPort: Int, private val timeout: Int, printLog: Boolean) {
 
     class DisconnectedException : RuntimeException("Connection is disposed")
     class CancelCommunication : RuntimeException("Communication is canceled")
@@ -79,7 +79,17 @@ class TcpSocketConnection(serverIp: String, serverPort: Int, timeout: Int = TIME
     private var function: ((tcpSocketConnection: TcpSocketConnection, byteArray: ByteArray) -> Single<Boolean>?)? = null
     private val receiveDataRelay = PublishRelay.create<ByteArray>()
 
+    private val log: (string: String) -> Unit
+
     init {
+        if (printLog) {
+            log = {
+                Log.i(LOG_TAG, it)
+            }
+        } else {
+            log = {}
+        }
+
         connect(serverIp, serverPort, timeout)
     }
 
@@ -125,11 +135,13 @@ class TcpSocketConnection(serverIp: String, serverPort: Int, timeout: Int = TIME
             }
 
             val byteArray = byteBuffer.array().copyOf(bufferSize)
+            log("receiving byteArray:${byteArray.contentToString()}")
             if (sendDataQueue.size > 0) {
                 val sendData = sendDataQueue.peek()
 
                 if (sendData.isSent()) {
-                    if (System.currentTimeMillis() - sendData.sentTimeStamp > TIMEOUT_MILLIS) {
+                    if (System.currentTimeMillis() - sendData.sentTimeStamp > timeout) {
+                        log("timeout started:${sendData.sentTimeStamp}")
                         byteBuffer.clear()
                         bufferSize = 0
                         sendDataQueue.pop()
@@ -186,6 +198,7 @@ class TcpSocketConnection(serverIp: String, serverPort: Int, timeout: Int = TIME
     }
 
     fun close() {
+        log("close socket")
         try {
             socket.close()
         } catch (e: Exception) {
@@ -206,6 +219,7 @@ class TcpSocketConnection(serverIp: String, serverPort: Int, timeout: Int = TIME
     }
 
     private fun sendData(sendData: SendData) {
+        log("sendData:${sendData.byteArray.contentToString()}")
         sendData.sentTimeStamp = System.currentTimeMillis()
         outputStream?.write(sendData.byteArray)
     }
@@ -260,7 +274,6 @@ class TcpSocketConnection(serverIp: String, serverPort: Int, timeout: Int = TIME
     }
 
     companion object {
-        private const val TIMEOUT_MILLIS = 30000
         private val LOG_TAG = TcpSocketConnection::class.java.simpleName
     }
 }

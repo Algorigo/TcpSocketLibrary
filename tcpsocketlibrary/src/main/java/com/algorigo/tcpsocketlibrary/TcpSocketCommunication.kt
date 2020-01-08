@@ -12,13 +12,13 @@ open class TcpSocketCommunication(private val serverIp: String, private val serv
     private var connectSubject = BehaviorSubject.create<TcpSocketConnection>()
     private var subscribed = 0
 
-    fun connectObservable(): Observable<TcpSocketConnection> {
+    fun connectObservable(timeout: Int = TIMEOUT_MILLIS, printLog: Boolean = false): Observable<TcpSocketConnection> {
         return connectSubject
             .doOnSubscribe {
                 if (subscribed++ == 0) {
                     Observable.create<TcpSocketConnection> { emitter ->
                         try {
-                            connection = TcpSocketConnection(serverIp, serverPort).also {
+                            connection = TcpSocketConnection(serverIp, serverPort, timeout, printLog).also {
                                 it.disconnectListener =
                                     object : TcpSocketConnection.OnDisconnectListener {
                                         override fun onDisconnected() {
@@ -71,5 +71,7 @@ open class TcpSocketCommunication(private val serverIp: String, private val serv
 
     companion object {
         private val LOG_TAG = TcpSocketCommunication::class.java.simpleName
+
+        private const val TIMEOUT_MILLIS = 30000
     }
 }
