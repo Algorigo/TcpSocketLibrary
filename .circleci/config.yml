@@ -22,7 +22,7 @@ jobs:
         command: |
           mkdir -p ~/.gradle
           curl $GRADLE_PROPERTY_PATH --output ~/.gradle/gradle.properties
-          curl $SECRET_KEY_RING_PATH --output secret-keys.gpg
+          curl $SECRET_KEY_RING_PATH --output tcpsocketlibrary/secret-keys.gpg
     - run:
         command: |
           ./gradlew build
