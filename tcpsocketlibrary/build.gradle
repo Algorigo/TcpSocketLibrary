@@ -1,30 +1,98 @@
 apply plugin: 'com.android.library'
-
 apply plugin: 'kotlin-android'
 
-apply plugin: 'com.novoda.bintray-release' // must be applied after your artifact generating plugin (eg. java / com.android.library)
+def versionStr = '1.1.0'
 
-publish {
-    userOrg = 'chagilhwan'
-    groupId = 'com.algorigo.tcpsocketlibrary'
-    artifactId = 'TcpSocketLibrary'
-    publishVersion = '1.0.7'
-    desc = 'AlgorigoBleLibrary'
-    website = 'https://github.com/Algorigo/TcpSocketLibrary'
-    issueTracker = "${website}/issues"
-    repository = "${website}.git"
+def getCurrentGitBranch() {
+    def gitBranch = "Unknown branch"
+    try {
+        def workingDir = new File("${project.projectDir}")
+        def result = 'git rev-parse --abbrev-ref HEAD'.execute(null, workingDir)
+        result.waitFor()
+        if (result.exitValue() == 0) {
+            gitBranch = result.text.trim()
+        }
+    } catch (e) {
+    }
+    return gitBranch
+}
+
+def getUserName() {
+    return System.properties['user.name']
+}
+
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.bmuschko:gradle-nexus-plugin:2.3.1'
+    }
+}
+
+apply plugin: 'com.bmuschko.nexus'
+
+group = "com.algorigo.rx"
+archivesBaseName = "tcpsocketlibrary"
+if (getCurrentGitBranch().equals('master')) {
+    version = versionStr
+} else {
+    version = "${versionStr}-${getUserName()}-SNAPSHOT"
+}
+
+modifyPom {
+    project {
+        name 'TcpSocketLibrary'
+        description 'Tcp Socket Rx Library'
+        url 'https://github.com/Algorigo/TcpSocketLibrary'
+        inceptionYear '2018'
+
+        scm {
+            url 'https://github.com/Algorigo/TcpSocketLibrary'
+            connection 'scm:https://github.com/Algorigo/TcpSocketLibrary.git'
+            developerConnection 'scm:git:https://github.com/Algorigo/TcpSocketLibrary.git'
+        }
+
+        licenses {
+            license {
+                name 'The Apache Software License, Version 2.0'
+                url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                distribution 'repo'
+            }
+        }
+
+        developers {
+            developer {
+                id 'rouddy'
+                name 'Rouddy'
+                email 'rouddy@naver.com'
+            }
+        }
+    }
+}
+
+extraArchive {
+    sources = true
+    tests = true
+    javadoc = true
+}
+
+nexus {
+    sign = true
+    repositoryUrl = NEXUS_REPOSITORY_URL
+    snapshotRepositoryUrl = NEXUS_SNAPSHOT_REPOSITORY_URL
 }
 
 android {
-    compileSdkVersion 28
+    compileSdkVersion 30
 
     defaultConfig {
-        minSdkVersion 18
-        targetSdkVersion 28
+        minSdkVersion 21
+        targetSdkVersion 30
         versionCode 1
-        versionName publish.publishVersion
+        versionName versionStr
 
-        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
 
     }
 
@@ -41,16 +109,15 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation"org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
 
-    implementation 'com.android.support:appcompat-v7:28.0.0'
-    testImplementation 'junit:junit:4.12'
-    androidTestImplementation 'com.android.support.test:runner:1.0.2'
-    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.2'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
 
     // ReactiveX
-    implementation 'io.reactivex.rxjava2:rxkotlin:2.3.0'
-    implementation 'io.reactivex.rxjava2:rxandroid:2.1.0'
+    implementation 'io.reactivex.rxjava2:rxkotlin:2.4.0'
+    implementation 'io.reactivex.rxjava2:rxandroid:2.1.1'
     //ReactiveX Relay
-    implementation 'com.jakewharton.rxrelay2:rxrelay:2.1.0'
+    implementation 'com.jakewharton.rxrelay2:rxrelay:2.1.1'
 }
 
 buildscript {
@@ -58,6 +125,6 @@ buildscript {
         jcenter()
     }
     dependencies {
-        classpath 'com.novoda:bintray-release:0.9'
+        classpath 'com.novoda:bintray-release:0.9.1'
     }
 }
