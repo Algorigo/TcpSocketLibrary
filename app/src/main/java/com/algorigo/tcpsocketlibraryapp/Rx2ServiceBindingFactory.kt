@@ -5,8 +5,8 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.Binder
 import android.os.IBinder
-import io.reactivex.Observable
-import io.reactivex.subjects.BehaviorSubject
+import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.subjects.BehaviorSubject
 
 object Rx2ServiceBindingFactory {
     fun <B : Binder> bind(context: Context, intent: Intent): Observable<B> {
