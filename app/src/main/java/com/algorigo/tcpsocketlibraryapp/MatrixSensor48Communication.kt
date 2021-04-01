@@ -1,7 +1,7 @@
 package com.algorigo.tcpsocketlibraryapp
 
 import com.algorigo.tcpsocketlibrary.TcpSocketCommunication
-import io.reactivex.Observable
+import io.reactivex.rxjava3.core.Observable
 import java.nio.ByteBuffer
 
 class MatrixSensor48Communication(ip: String, port: Int) : TcpSocketCommunication(ip, port) {

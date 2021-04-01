@@ -1,12 +1,12 @@
 package com.algorigo.tcpsocketlibrary
 
 import android.util.Log
-import com.jakewharton.rxrelay2.PublishRelay
-import io.reactivex.Observable
-import io.reactivex.ObservableEmitter
-import io.reactivex.Single
-import io.reactivex.SingleEmitter
-import io.reactivex.schedulers.Schedulers
+import com.jakewharton.rxrelay3.PublishRelay
+import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.core.ObservableEmitter
+import io.reactivex.rxjava3.core.Single
+import io.reactivex.rxjava3.core.SingleEmitter
+import io.reactivex.rxjava3.schedulers.Schedulers
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.InetAddress
