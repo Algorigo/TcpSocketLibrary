@@ -6,8 +6,8 @@ import android.os.Bundle
 import android.util.Log
 import com.algorigo.tcpsocketlibrary.TcpSocketCommunication
 import com.algorigo.tcpsocketlibrary.TcpSocketConnection
-import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.disposables.Disposable
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.disposables.Disposable
 import kotlinx.android.synthetic.main.activity_send.*
 import java.nio.charset.Charset
 

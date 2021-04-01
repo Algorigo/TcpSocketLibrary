@@ -1,10 +1,10 @@
 package com.algorigo.tcpsocketlibrary
 
 import android.util.Log
-import io.reactivex.Observable
-import io.reactivex.Single
-import io.reactivex.schedulers.Schedulers
-import io.reactivex.subjects.BehaviorSubject
+import io.reactivex.rxjava3.core.Single
+import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.schedulers.Schedulers
+import io.reactivex.rxjava3.subjects.BehaviorSubject
 
 open class TcpSocketCommunication(private val serverIp: String, private val serverPort: Int) {
 
