@@ -1,7 +1,7 @@
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 
-def versionStr = '1.2.0'
+def versionStr = '1.3.0'
 
 def getCurrentGitBranch() {
     def gitBranch = "Unknown branch"
@@ -21,16 +21,8 @@ def getUserName() {
     return System.properties['user.name']
 }
 
-buildscript {
-    repositories {
-        jcenter()
-    }
-    dependencies {
-        classpath 'com.bmuschko:gradle-nexus-plugin:2.3.1'
-    }
-}
-
-apply plugin: 'com.bmuschko.nexus'
+apply plugin: 'maven-publish'
+apply plugin: 'signing'
 
 group = "com.algorigo.rx"
 archivesBaseName = "tcpsocketlibrary"
@@ -40,55 +32,60 @@ if (getCurrentGitBranch().equals('master')) {
     version = "${versionStr}-${getUserName()}-SNAPSHOT"
 }
 
-modifyPom {
-    project {
-        name 'TcpSocketLibrary'
-        description 'Tcp Socket Rx Library'
-        url 'https://github.com/Algorigo/TcpSocketLibrary'
-        inceptionYear '2018'
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifactId = archivesBaseName
+            pom {
+                name = 'TcpSocketLibrary'
+                description = 'Tcp Socket Rx Library'
+                url = 'https://github.com/Algorigo/TcpSocketLibrary'
+                artifact("$buildDir/outputs/aar/tcpsocketlibrary-release.aar")
 
-        scm {
-            url 'https://github.com/Algorigo/TcpSocketLibrary'
-            connection 'scm:https://github.com/Algorigo/TcpSocketLibrary.git'
-            developerConnection 'scm:git:https://github.com/Algorigo/TcpSocketLibrary.git'
-        }
+                licenses {
+                    license {
+                        name = 'The Apache Software License, Version 2.0'
+                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
 
-        licenses {
-            license {
-                name 'The Apache Software License, Version 2.0'
-                url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                distribution 'repo'
+                developers {
+                    developer {
+                        id = 'rouddy'
+                        name = 'Rouddy'
+                        email = 'rouddy@naver.com'
+                    }
+                }
+
+                scm {
+                    connection = 'scm:https://github.com/Algorigo/TcpSocketLibrary.git'
+                    developerConnection = 'scm:git:https://github.com/Algorigo/TcpSocketLibrary.git'
+                    url = 'https://github.com/Algorigo/TcpSocketLibrary'
+                }
             }
         }
-
-        developers {
-            developer {
-                id 'rouddy'
-                name 'Rouddy'
-                email 'rouddy@naver.com'
+    }
+    repositories {
+        maven {
+            url = version.endsWith('SNAPSHOT') ? NEXUS_SNAPSHOT_REPOSITORY_URL : NEXUS_REPOSITORY_URL
+            credentials {
+                username = findProperty('nexusUsername')
+                password = findProperty('nexusPassword')
             }
         }
     }
 }
 
-extraArchive {
-    sources = true
-    tests = true
-    javadoc = true
-}
-
-nexus {
-    sign = true
-    repositoryUrl = NEXUS_REPOSITORY_URL
-    snapshotRepositoryUrl = NEXUS_SNAPSHOT_REPOSITORY_URL
+signing {
+    sign publishing.publications.mavenJava
 }
 
 android {
-    compileSdkVersion 30
+    compileSdkVersion 31
 
     defaultConfig {
         minSdkVersion 21
-        targetSdkVersion 30
+        targetSdkVersion 31
         versionCode 1
         versionName versionStr
 
@@ -102,29 +99,28 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
-
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+    kotlinOptions {
+        jvmTarget = '11'
+    }
 }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation"org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    implementation 'androidx.core:core-ktx:1.7.0'
 
     testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.2'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.3'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
 
     // ReactiveX
     implementation 'io.reactivex.rxjava3:rxkotlin:3.0.1'
     implementation 'io.reactivex.rxjava3:rxandroid:3.0.0'
     //ReactiveX Relay
     implementation 'com.jakewharton.rxrelay3:rxrelay:3.0.0'
-}
-
-buildscript {
-    repositories {
-        jcenter()
-    }
-    dependencies {
-        classpath 'com.novoda:bintray-release:0.9.1'
-    }
 }
