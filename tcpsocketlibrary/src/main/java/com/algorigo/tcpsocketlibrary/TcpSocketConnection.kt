@@ -168,9 +168,9 @@ class TcpSocketConnection(serverIp: String, serverPort: Int, private val timeout
                 } else {
                     try {
                         sendData(sendData)
-                        if (sendData.receiveDataVarifier(byteArrayOf())) {
-                            sendDataQueue.remove(sendData)
-                        }
+//                        if (sendData.receiveDataVarifier(byteArrayOf())) {
+//                            sendDataQueue.remove(sendData)
+//                        }
                     } catch (e: Exception) {
                         Log.e(LOG_TAG, "", e)
                         break
